@@ -1,47 +1,9 @@
-"use strict";
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// src/index.ts
-var index_exports = {};
-__export(index_exports, {
-  removeMagicComments: () => removeMagicComments,
-  removeMagicCommentsFromFile: () => removeMagicCommentsFromFile,
-  removeTypes: () => removeTypes,
-  transform: () => transform,
-  transformFile: () => transformFile
-});
-module.exports = __toCommonJS(index_exports);
-
 // src/transform.ts
-var import_core = require("@babel/core");
-var import_prettier = require("prettier");
-var import_preset_typescript = __toESM(require("@babel/preset-typescript"), 1);
+import {
+  transformAsync
+} from "@babel/core";
+import { format } from "prettier";
+import babelTs from "@babel/preset-typescript";
 async function transform(code, fileName, options = {}) {
   const { prettierOptions, ...removeTypeOptions } = options;
   const originalFileName = fileName;
@@ -55,7 +17,7 @@ async function transform(code, fileName, options = {}) {
   if (emitsContent) {
     code = code.replace("defineEmits(", (str) => `${str}${emitsContent}`);
   }
-  code = await (0, import_prettier.format)(code, {
+  code = await format(code, {
     ...prettierOptions,
     filepath: originalFileName
   });
@@ -97,7 +59,7 @@ async function removeTypes(code, fileName, options) {
         }
       }
     ].filter(Boolean),
-    presets: [import_preset_typescript.default],
+    presets: [babelTs],
     generatorOpts: {
       shouldPrintComment: (comment) => comment !== "@detype: remove-me" && (!options.removeTsComments || !comment.match(/^\s*(@ts-ignore|@ts-expect-error)/))
     }
@@ -105,7 +67,7 @@ async function removeTypes(code, fileName, options) {
   if (options.customizeBabelConfig) {
     options.customizeBabelConfig(babelConfig);
   }
-  const babelOutput = await (0, import_core.transformAsync)(code, babelConfig);
+  const babelOutput = await transformAsync(code, babelConfig);
   if (!babelOutput || babelOutput.code === void 0 || babelOutput.code === null) {
     throw new Error("Babel error");
   }
@@ -155,7 +117,7 @@ async function removeMagicComments(code, fileName, prettierOptions) {
     start = code.indexOf(REPLACE_COMMENT, before.length + keptText.length);
     startEnd = start + REPLACE_COMMENT.length;
   }
-  code = await (0, import_prettier.format)(code, {
+  code = await format(code, {
     ...prettierOptions,
     filepath: fileName
   });
@@ -163,12 +125,12 @@ async function removeMagicComments(code, fileName, prettierOptions) {
 }
 
 // src/transformFile.ts
-var import_node_fs = __toESM(require("fs"), 1);
-var import_prettier2 = require("prettier");
-var { readFile, writeFile } = import_node_fs.default.promises;
+import fs from "node:fs";
+import { resolveConfig } from "prettier";
+var { readFile, writeFile } = fs.promises;
 async function transformFile(inputFileName, outputFileName, options = {}) {
   const code = await readFile(inputFileName, "utf-8");
-  const prettierOptions = await (0, import_prettier2.resolveConfig)(inputFileName);
+  const prettierOptions = await resolveConfig(inputFileName);
   const output = await transform(code, inputFileName, {
     prettierOptions,
     ...options
@@ -177,15 +139,15 @@ async function transformFile(inputFileName, outputFileName, options = {}) {
 }
 async function removeMagicCommentsFromFile(inputFileName, outputFileName) {
   const code = await readFile(inputFileName, "utf-8");
-  const prettierConfig = await (0, import_prettier2.resolveConfig)(inputFileName);
+  const prettierConfig = await resolveConfig(inputFileName);
   const output = await removeMagicComments(code, inputFileName, prettierConfig);
   await writeFile(outputFileName, output, "utf-8");
 }
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  removeMagicComments,
-  removeMagicCommentsFromFile,
-  removeTypes,
+
+export {
   transform,
-  transformFile
-});
+  removeTypes,
+  removeMagicComments,
+  transformFile,
+  removeMagicCommentsFromFile
+};

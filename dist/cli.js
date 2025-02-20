@@ -1,7 +1,7 @@
 import {
   removeMagicCommentsFromFile,
   transformFile
-} from "./chunk-ZKVUSCWW.js";
+} from "./chunk-E7RJF7QX.js";
 
 // src/cli-lib.ts
 import fs from "node:fs";
@@ -48,9 +48,6 @@ var package_default = {
     "@babel/preset-typescript": "^7.26.0",
     "@babel/traverse": "^7.25.9",
     "@vue/compiler-dom": "^3.5.13",
-    "@vue/compiler-sfc": "^3.5.13",
-    "@vuedx/compiler-sfc": "0.7.1",
-    "@vuedx/template-ast-types": "0.7.1",
     "fast-glob": "^3.3.2",
     prettier: "^3.4.1"
   },

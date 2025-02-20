@@ -4,42 +4,10 @@ import {
 } from "@babel/core";
 import type { VisitNodeObject, Node } from "@babel/traverse";
 import { format } from "prettier";
-import {
-	parse as parseVueSfc,
-	SFCTemplateBlock as VueSfcTemplateBlock,
-	SFCScriptBlock as VueSfcScriptBlock,
-} from "@vuedx/compiler-sfc";
-import { compileScript } from "@vue/compiler-sfc";
-import {
-	traverse as traverseVueAst,
-	isSimpleExpressionNode as isVueSimpleExpressionNode,
-	isComponentNode as isVueComponentNode,
-} from "@vuedx/template-ast-types";
 import type { PrettierOptions } from ".";
 
 // @ts-expect-error: No typinggs needed
 import babelTs from "@babel/preset-typescript";
-
-function getDefinePropsObject(content: string) {
-	const matched = /\sprops:\s*\{/m.exec(content);
-	if (matched) {
-		const startContentIndex = matched.index + matched[0].length - 1;
-		let leftBracketCount = 1;
-		let endContentIndex = startContentIndex + 1;
-		while (leftBracketCount) {
-			if (content.charAt(endContentIndex) === "{") {
-				leftBracketCount++;
-			} else if (content.charAt(endContentIndex) === "}") {
-				leftBracketCount--;
-			}
-			endContentIndex++;
-		}
-		return content.substring(startContentIndex, endContentIndex);
-	}
-	return "";
-}
-
-type VueElementNode = VueSfcTemplateBlock["ast"];
 
 export interface RemoveTypeOptions {
 	/** Whether to remove ts-ignore and ts-expect-error comments */
@@ -66,70 +34,13 @@ export async function transform(
 ): Promise<string> {
 	const { prettierOptions, ...removeTypeOptions } = options;
 
-	const originalCode = code;
 	const originalFileName = fileName;
 	let propsContent = "";
 	let emitsContent = "";
 
 	code = code.replaceAll("\r\n", "\n");
 
-	if (fileName.endsWith(".vue")) {
-		const parsedVue = parseVueSfc(code);
-
-		if (
-			parsedVue.descriptor.script?.lang !== "ts" &&
-			parsedVue.descriptor.scriptSetup?.lang !== "ts"
-		) {
-			// No TypeScript, don't touch it
-			return originalCode;
-		}
-
-		let { script: script1, scriptSetup: script2 } = parsedVue.descriptor;
-
-		const isContainsDefinePropsType =
-			script2?.content.match(/defineProps\s*</m);
-		const isContainsDefineEmitType = script2?.content.match(/defineEmits\s*</m);
-
-		if (isContainsDefinePropsType || isContainsDefineEmitType) {
-			const { content } = compileScript(parsedVue.descriptor as any, {
-				id: "xxxxxxx",
-			});
-
-			if (isContainsDefinePropsType) {
-				propsContent = getDefinePropsObject(content);
-			}
-			if (isContainsDefineEmitType) {
-				emitsContent = content.match(/\semits:\s(\[.*\]?)/m)?.[1] || "";
-			}
-		}
-
-		// Process the second script first to simplify code location handling
-		if (
-			script1 &&
-			script2 &&
-			script1.loc.start.offset < script2.loc.start.offset
-		) {
-			[script2, script1] = [script1, script2];
-		}
-
-		code = await removeTypesFromVueSfcScript(
-			code,
-			fileName,
-			script1,
-			parsedVue.descriptor.template?.ast,
-			removeTypeOptions,
-		);
-
-		code = await removeTypesFromVueSfcScript(
-			code,
-			fileName,
-			script2,
-			parsedVue.descriptor.template?.ast,
-			removeTypeOptions,
-		);
-	} else {
-		code = await removeTypes(code, fileName, removeTypeOptions);
-	}
+	code = await removeTypes(code, fileName, removeTypeOptions);
 
 	if (propsContent) {
 		code = code.replace("defineProps(", (str) => `${str}${propsContent}`);
@@ -230,63 +141,6 @@ export async function removeTypes(
 				`\n`.repeat(p1 - 2),
 			)
 	);
-}
-
-async function removeTypesFromVueSfcScript(
-	code: string,
-	fileName: string,
-	script: VueSfcScriptBlock | null,
-	templateAst: VueElementNode | undefined,
-	options: RemoveTypeOptions,
-) {
-	if (script === null || script.lang !== "ts") return code;
-
-	if (script.setup && templateAst) {
-		// Babel TypeScript preset removes unused exports thinking they may be type-only exports.
-		// We have to mark every import that the template references to mark them as used.
-
-		const expressions = new Set<string>();
-
-		traverseVueAst(templateAst, {
-			enter(node) {
-				if (isVueSimpleExpressionNode(node) && !node.isStatic) {
-					expressions.add(`[${node.content}]`);
-				} else if (isVueComponentNode(node)) {
-					expressions.add(`[${node.tag}]`);
-				}
-			},
-		});
-
-		// We'll simply add them at the end of the template
-		script.content +=
-			"/* @detype: remove-after-this */" + [...expressions].join(";");
-	}
-
-	let scriptCode = await removeTypes(script.content, fileName + ".ts", options);
-
-	const removeAfterIndex = scriptCode.indexOf(
-		"/* @detype: remove-after-this */",
-	);
-
-	if (removeAfterIndex >= 0) {
-		scriptCode = scriptCode.slice(0, removeAfterIndex);
-	}
-
-	let before = code.slice(0, script.loc.start.offset);
-	const after = code.slice(script.loc.end.offset);
-
-	// We have to backtrack to remove lang="ts", not fool-proof but should work for all reasonable code
-	const matches = before.match(/\blang\s*=\s*["']ts["']/);
-
-	if (matches) {
-		const lastMatch = matches[matches.length - 1]!;
-		const lastMatchIndex = before.lastIndexOf(lastMatch);
-		before =
-			before.slice(0, lastMatchIndex) +
-			before.slice(lastMatchIndex + lastMatch.length);
-	}
-
-	return before + scriptCode + after;
 }
 
 export function processMagicComments(input: string): string {
