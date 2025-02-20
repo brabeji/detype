@@ -20,11 +20,6 @@ import type { PrettierOptions } from ".";
 // @ts-expect-error: No typinggs needed
 import babelTs from "@babel/preset-typescript";
 
-// Needed for Node 14
-// @ts-expect-error: No typinggs
-import { shim } from "string.prototype.replaceall";
-shim();
-
 function getDefinePropsObject(content: string) {
 	const matched = /\sprops:\s*\{/m.exec(content);
 	if (matched) {
@@ -151,7 +146,7 @@ export async function transform(
 	return code;
 }
 
-async function removeTypes(
+export async function removeTypes(
 	code: string,
 	fileName: string,
 	options: RemoveTypeOptions,

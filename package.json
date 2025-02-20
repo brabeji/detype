@@ -41,8 +41,7 @@
 		"@vuedx/compiler-sfc": "0.7.1",
 		"@vuedx/template-ast-types": "0.7.1",
 		"fast-glob": "^3.3.2",
-		"prettier": "^3.4.1",
-		"string.prototype.replaceall": "^1.0.10"
+		"prettier": "^3.4.1"
 	},
 	"devDependencies": {
 		"@cyco130/eslint-config": "^5.0.1",
