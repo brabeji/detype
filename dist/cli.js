@@ -1,7 +1,7 @@
 import {
   removeMagicCommentsFromFile,
   transformFile
-} from "./chunk-E7RJF7QX.js";
+} from "./chunk-P4QJEV6O.js";
 
 // src/cli-lib.ts
 import fs from "node:fs";

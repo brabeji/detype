@@ -3,7 +3,7 @@ import {
 	TransformOptions as BabelTransformOptions,
 } from "@babel/core";
 import type { VisitNodeObject, Node } from "@babel/traverse";
-import { format } from "prettier";
+import { format } from "prettier/standalone";
 import type { PrettierOptions } from ".";
 
 // @ts-expect-error: No typinggs needed

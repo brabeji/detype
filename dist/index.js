@@ -4,7 +4,7 @@ import {
   removeTypes,
   transform,
   transformFile
-} from "./chunk-E7RJF7QX.js";
+} from "./chunk-P4QJEV6O.js";
 export {
   removeMagicComments,
   removeMagicCommentsFromFile,
